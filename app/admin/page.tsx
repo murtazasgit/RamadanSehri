@@ -5,11 +5,8 @@ import { ADMIN_PASSWORD } from '../../lib/constants'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Users, Utensils, Clock, CheckCircle, Loader2, RefreshCw, Calendar } from 'lucide-react'
-import { setSetting } from '../../lib/settings'
 import { supabase } from '../../lib/supabase'
 import { useRealtimeEntries, Entry } from '../../hooks/useRealtimeEntries'
-
-const SETTING_KEY = 'sehri_start_datetime'
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -24,23 +21,21 @@ export default function AdminPage() {
   const fetchEntries = useCallback(async () => {
     setLoading(true)
     
-    // Calculate period from last 5 AM to next 5 AM
+    // Calculate period from last 5 AM to next 5 AM (local time)
     const now = new Date()
     const currentHour = now.getHours()
     
     let periodStart: Date
     if (currentHour >= 5) {
-      // If it's after 5 AM today, start from today's 5 AM
       periodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 5, 0, 0, 0)
     } else {
-      // If it's before 5 AM today, start from yesterday's 5 AM
       const yesterday = new Date(now)
       yesterday.setDate(yesterday.getDate() - 1)
       periodStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 5, 0, 0, 0)
     }
     
-    const startTime = periodStart.toISOString().slice(0, 16)
-    setStartDateTime(startTime)
+    // Store as ISO string for consistency
+    setStartDateTime(periodStart.toISOString())
     
     try {
       const { data, error } = await supabase
@@ -74,6 +69,8 @@ export default function AdminPage() {
         return entryTime >= startTime
       })
       setEntries(filtered)
+    } else if (allEntries.length > 0) {
+      setEntries(allEntries)
     }
   }, [startDateTime, allEntries])
 
@@ -85,13 +82,6 @@ export default function AdminPage() {
     } else {
       setError('Invalid password')
     }
-  }
-
-  const handleNewDay = async () => {
-    const now = new Date().toISOString().slice(0, 16)
-    await setSetting(SETTING_KEY, now)
-    setStartDateTime(now)
-    fetchEntries()
   }
 
   const formatDisplayDateTime = (isoString: string) => {
