@@ -1,5 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
+import { Analytics } from '@vercel/analytics/next'
 import { Header } from '../components/layout/Header'
 import { Background } from '../components/layout/Background'
 
@@ -16,6 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <Analytics />
         <Background />
         <Header />
         <main className="pt-16 min-h-screen">
