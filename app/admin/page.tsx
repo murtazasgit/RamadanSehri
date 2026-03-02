@@ -140,7 +140,7 @@ export default function AdminPage() {
     setShowPhoneNumbers(!showPhoneNumbers)
   }
 
-  const [showPhoneNumbers, setShowPhoneNumbers] = useState(false)
+  const [showPhoneNumbers, setShowPhoneNumbers] = useState(true)
 
   if (!isAuthenticated) {
     return (
