@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { ADMIN_PASSWORD } from '../../lib/constants'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
-import { Users, Utensils, Clock, CheckCircle, Loader2, RefreshCw, Calendar } from 'lucide-react'
+import { Users, Utensils, Clock, CheckCircle, Loader2, Calendar } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useRealtimeEntries, Entry } from '../../hooks/useRealtimeEntries'
+import { sanitizeInput, validateNoXSS, validateNoSQLInjection } from '../../lib/utils'
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -74,13 +74,25 @@ export default function AdminPage() {
     }
   }, [startDateTime, allEntries])
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (password === ADMIN_PASSWORD) {
-      setIsAuthenticated(true)
-      setError('')
-    } else {
-      setError('Invalid password')
+    setError('')
+    
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      
+      if (res.ok) {
+        setIsAuthenticated(true)
+      } else {
+        const data = await res.json()
+        setError(data.error || 'Invalid password')
+      }
+    } catch {
+      setError('An error occurred. Please try again.')
     }
   }
 
@@ -98,22 +110,37 @@ export default function AdminPage() {
   }
 
   const today = new Date().toDateString()
-  const todayEntries = entries.filter(e => new Date(e.created_at).toDateString() === today)
+  const todayEntries = allEntries.filter(e => new Date(e.created_at).toDateString() === today)
+  const periodEntries = entries
 
   const stats = {
-    total: entries.length,
+    totalAll: allEntries.length,
+    totalPeriod: periodEntries.length,
     today: todayEntries.length,
-    totalFood: entries.reduce((sum, e) => sum + e.people_count, 0),
+    totalFoodAll: allEntries.reduce((sum, e) => sum + e.people_count, 0),
+    totalFoodPeriod: periodEntries.reduce((sum, e) => sum + e.people_count, 0),
     todayFood: todayEntries.reduce((sum, e) => sum + e.people_count, 0),
   }
 
-  const filteredEntries = entries.filter(e => {
+  const maskPhone = (phone: string) => {
+    if (!phone || phone.length < 4) return '****'
+    return phone.slice(0, 2) + '****' + phone.slice(-2)
+  }
+
+  const filteredAllEntries = allEntries.filter(e => {
     if (!searchQuery) return true
     const q = searchQuery.toLowerCase()
+    const maskedPhone = maskPhone(e.phone)
     return e.person_name.toLowerCase().includes(q) || 
-           e.phone.includes(q) || 
+           maskedPhone.includes(q) ||
            e.address.toLowerCase().includes(q)
   })
+
+  const togglePhoneVisibility = () => {
+    setShowPhoneNumbers(!showPhoneNumbers)
+  }
+
+  const [showPhoneNumbers, setShowPhoneNumbers] = useState(false)
 
   if (!isAuthenticated) {
     return (
@@ -155,10 +182,10 @@ export default function AdminPage() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {[
-            { label: 'Total', value: stats.total, icon: Users, color: 'primary' },
-            { label: 'Today', value: stats.today, icon: Clock, color: 'accent' },
-            { label: 'Total Food', value: stats.totalFood, icon: Utensils, color: 'primary' },
-            { label: 'Today Food', value: stats.todayFood, icon: CheckCircle, color: 'accent' },
+            { label: 'Total Entries', value: stats.totalAll, icon: Users, color: 'primary' },
+            { label: 'Period Entries', value: stats.totalPeriod, icon: Clock, color: 'accent' },
+            { label: 'Total Food', value: stats.totalFoodAll, icon: Utensils, color: 'primary' },
+            { label: 'Period Food', value: stats.totalFoodPeriod, icon: CheckCircle, color: 'accent' },
           ].map((stat, i) => (
             <div key={i} className={`bg-background-secondary rounded-xl p-4 border border-border/50`}>
               <div className="flex items-center justify-between">
@@ -180,9 +207,20 @@ export default function AdminPage() {
               type="text"
               placeholder="Search by name, phone, address..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value
+                if (val.length > 100) return
+                if (!validateNoXSS(val) || !validateNoSQLInjection(val)) return
+                setSearchQuery(val)
+              }}
               className="flex-1 px-3 py-2 bg-background-tertiary border border-border rounded-lg text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
+            <button
+              onClick={togglePhoneVisibility}
+              className="px-3 py-2 bg-background-tertiary border border-border rounded-lg text-text-secondary text-sm hover:bg-primary/20 hover:border-primary transition-all"
+            >
+              {showPhoneNumbers ? 'Hide Phones' : 'Show Phones'}
+            </button>
           </div>
 
           {loading ? (
@@ -200,14 +238,14 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredEntries.length === 0 ? (
+                  {filteredAllEntries.length === 0 ? (
                     <tr><td colSpan={5} className="text-center py-6 text-text-secondary">No entries found</td></tr>
                   ) : (
-                    filteredEntries.map((entry) => (
+                    filteredAllEntries.map((entry: Entry) => (
                       <tr key={entry.id} className="border-b border-border/50 hover:bg-background-tertiary/30">
                         <td className="py-2.5 px-3 text-text-secondary text-xs">{new Date(entry.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
                         <td className="py-2.5 px-3 text-text-primary font-medium">{entry.person_name}</td>
-                        <td className="py-2.5 px-3 text-text-secondary">{entry.phone}</td>
+                        <td className="py-2.5 px-3 text-text-secondary">{showPhoneNumbers ? entry.phone : maskPhone(entry.phone)}</td>
                         <td className="py-2.5 px-3 text-text-secondary text-xs">{entry.address}</td>
                         <td className="py-2.5 px-3 text-center">
                           <span className="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full bg-accent/20 text-accent text-xs font-medium">{entry.people_count}</span>

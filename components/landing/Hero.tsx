@@ -31,9 +31,15 @@ export function Hero() {
             <span className="text-gold-gradient">Food Registration</span>
           </h1>
           
-          <p className="text-arabic text-2xl text-accent mb-4" dir="rtl">
-            مَنْ فَطَّرَ صَائِمًا
-          </p>
+          <div className="relative inline-block mb-6">
+            <div className="absolute inset-0 bg-accent/20 blur-xl rounded-full" />
+            <p className="relative text-3xl sm:text-4xl lg:text-5xl font-arabic text-accent tracking-wider py-2" dir="rtl">
+              مَنْ فَطَّرَ صَائِمًا
+            </p>
+            <svg className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-24 h-3 text-accent/60" viewBox="0 0 100 20" fill="currentColor">
+              <path d="M0 10 Q25 0 50 10 T100 10" stroke="currentColor" strokeWidth="2" fill="none" />
+            </svg>
+          </div>
           
           <p className="text-lg sm:text-xl text-text-secondary mb-8 font-body">
             "May Allah bless those who feed others."

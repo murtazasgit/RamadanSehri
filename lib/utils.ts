@@ -5,6 +5,56 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+const HTML_ENTITIES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#x27;',
+  '/': '&#x2F;',
+}
+
+const SQL_PATTERN = /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|TRUNCATE|TABLE|DATABASE|EXEC|EXECUTE|xp_)\b|;|--|\/\*|\*\/|@@|@)/gi
+
+export function sanitizeInput(input: string): string {
+  if (typeof input !== 'string') return ''
+  return input.trim()
+}
+
+export function sanitizeForHTML(input: string): string {
+  if (typeof input !== 'string') return ''
+  return input
+    .replace(/[&<>"'/]/g, char => HTML_ENTITIES[char] || char)
+    .trim()
+}
+
+export function sanitizeForSQL(input: string): string {
+  if (typeof input !== 'string') return ''
+  return input.replace(SQL_PATTERN, '')
+}
+
+export function sanitizePhone(phone: string): string {
+  if (typeof phone !== 'string') return ''
+  return phone.replace(/\D/g, '').slice(0, 10)
+}
+
+export function validateNoXSS(input: string): boolean {
+  if (typeof input !== 'string') return false
+  const xssPatterns = [
+    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+    /javascript:/gi,
+    /on\w+\s*=/gi,
+    /data:\s*text\/html/gi,
+    /vbscript:/gi,
+  ]
+  return !xssPatterns.some(pattern => pattern.test(input))
+}
+
+export function validateNoSQLInjection(input: string): boolean {
+  if (typeof input !== 'string') return false
+  return !SQL_PATTERN.test(input)
+}
+
 export function formatDate(date: string | Date): string {
   return new Intl.DateTimeFormat('en-IN', {
     day: '2-digit',

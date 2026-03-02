@@ -14,7 +14,7 @@ export const PGS = [
 
 export const SEHRI_TIME = '05:20'
 
-export const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'ramadan2026'
+export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'ramadan2026'
 
 export type PG = typeof PGS[number]
 

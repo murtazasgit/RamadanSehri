@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { SehriRequest } from '../../lib/constants'
-import { formatDate, exportToCSV } from '../../lib/utils'
+import { formatDate, exportToCSV, validateNoXSS, validateNoSQLInjection } from '../../lib/utils'
 import { updateDeliveryStatus, deleteRequest } from '../../lib/store'
 import { Search, Download, Check, X, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '../ui/Button'
@@ -124,7 +124,12 @@ export function RequestsTable({ requests, onRefresh }: RequestsTableProps) {
               type="text"
               placeholder="Search by phone, name, or request ID..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value
+                if (val.length > 100) return
+                if (!validateNoXSS(val) || !validateNoSQLInjection(val)) return
+                setSearchQuery(val)
+              }}
               className="w-full pl-10 pr-4 py-3 bg-background-tertiary border border-border rounded-lg text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>

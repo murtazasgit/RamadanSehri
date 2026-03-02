@@ -11,24 +11,25 @@ import { Textarea } from '../ui/Textarea'
 import { Modal } from '../ui/Modal'
 import { getPGById, generateRequestId } from '../../lib/constants'
 import { checkDuplicatePhone, saveRequest } from '../../lib/store'
+import { sanitizeInput, sanitizePhone, validateNoXSS, validateNoSQLInjection } from '../../lib/utils'
 import { Check, Minus, Plus, Copy } from 'lucide-react'
 
 const listedPGSchema = z.object({
-  fullName: z.string().min(2, 'Name must be at least 2 characters').max(50),
+  fullName: z.string().min(2, 'Name must be at least 2 characters').max(100).refine(val => validateNoXSS(val), 'Invalid characters detected'),
   phone: z.string().regex(/^\d{10}$/, 'Phone must be exactly 10 digits'),
-  roomNumber: z.string().optional(),
+  roomNumber: z.string().max(20).optional(),
   peopleCount: z.number().min(1, 'At least 1 person').max(50),
-  notes: z.string().optional(),
+  notes: z.string().max(500).optional(),
 })
 
 const othersSchema = z.object({
-  pgName: z.string().min(3, 'PG name must be at least 3 characters'),
-  fullName: z.string().min(2, 'Name must be at least 2 characters').max(50),
+  pgName: z.string().min(3, 'PG name must be at least 3 characters').max(100).refine(val => validateNoXSS(val), 'Invalid characters detected'),
+  fullName: z.string().min(2, 'Name must be at least 2 characters').max(100).refine(val => validateNoXSS(val), 'Invalid characters detected'),
   phone: z.string().regex(/^\d{10}$/, 'Phone must be exactly 10 digits'),
-  address: z.string().min(10, 'Please provide full address'),
+  address: z.string().min(10, 'Please provide full address').max(500).refine(val => validateNoXSS(val), 'Invalid characters detected'),
   peopleCount: z.number().min(1, 'At least 1 person').max(50),
-  landmark: z.string().optional(),
-  notes: z.string().optional(),
+  landmark: z.string().max(100).optional(),
+  notes: z.string().max(500).optional(),
 })
 
 type FormData = z.infer<typeof listedPGSchema> | z.infer<typeof othersSchema>
@@ -76,7 +77,25 @@ export function RegistrationForm({ pgId }: RegistrationFormProps) {
   const onSubmit = async (data: any) => {
     setSubmitError('')
 
-    if (checkDuplicatePhone(data.phone)) {
+    const sanitizedFullName = sanitizeInput(data.fullName)
+    const sanitizedPhone = sanitizePhone(data.phone)
+    const sanitizedNotes = data.notes ? sanitizeInput(data.notes) : ''
+    const sanitizedRoomNumber = data.roomNumber ? sanitizeInput(data.roomNumber) : ''
+    const sanitizedLandmark = data.landmark ? sanitizeInput(data.landmark) : ''
+    const sanitizedPgName = data.pgName ? sanitizeInput(data.pgName) : ''
+    const sanitizedAddress = data.address ? sanitizeInput(data.address) : ''
+
+    if (!validateNoXSS(sanitizedFullName) || !validateNoXSS(sanitizedNotes) || !validateNoXSS(sanitizedRoomNumber) || !validateNoXSS(sanitizedLandmark) || !validateNoXSS(sanitizedPgName) || !validateNoXSS(sanitizedAddress)) {
+      setSubmitError('Invalid characters detected in input')
+      return
+    }
+
+    if (!validateNoSQLInjection(sanitizedFullName) || !validateNoSQLInjection(sanitizedNotes) || !validateNoSQLInjection(sanitizedRoomNumber) || !validateNoSQLInjection(sanitizedLandmark) || !validateNoSQLInjection(sanitizedPgName) || !validateNoSQLInjection(sanitizedAddress)) {
+      setSubmitError('Invalid characters detected in input')
+      return
+    }
+
+    if (checkDuplicatePhone(sanitizedPhone)) {
       setSubmitError('This phone number is already registered for Sehri')
       return
     }
@@ -85,14 +104,14 @@ export function RegistrationForm({ pgId }: RegistrationFormProps) {
     
     const requestData = {
       pgId,
-      pgName: isOthers ? data.pgName : pg?.name || '',
-      fullName: data.fullName,
-      phone: data.phone,
-      roomNumber: data.roomNumber,
-      address: isOthers ? data.address : pg?.address || '',
+      pgName: isOthers ? sanitizedPgName : pg?.name || '',
+      fullName: sanitizedFullName,
+      phone: sanitizedPhone,
+      roomNumber: sanitizedRoomNumber,
+      address: isOthers ? sanitizedAddress : pg?.address || '',
       peopleCount: data.peopleCount,
-      landmark: data.landmark,
-      notes: data.notes,
+      landmark: sanitizedLandmark,
+      notes: sanitizedNotes,
       isOthers,
       requestId: newRequestId,
     }
