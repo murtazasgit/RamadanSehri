@@ -12,7 +12,7 @@ export const PGS = [
   { id: 'others', name: 'Others', address: '' },
 ] as const
 
-export const SEHRI_TIME = '05:20'
+export const SEHRI_TIME = '05:15'
 
 export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'ramadan2026'
 
