@@ -169,7 +169,11 @@ export function RegistrationForm({ pgId }: RegistrationFormProps) {
             placeholder="10-digit mobile number"
             type="tel"
             maxLength={10}
-            {...register('phone')}
+            {...register('phone', {
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10)
+              }
+            })}
             error={(errors as any).phone?.message as string}
             required
           />
